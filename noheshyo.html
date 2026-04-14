@@ -1,0 +1,2740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>請求書・納品書システム</title>
+
+<style>
+/* ===== 全局重置 & 打印控制 ===== */
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, "Helvetica Neue", Arial, sans-serif;
+    background: #f5f7fa;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+    color: #1e293b;
+}
+
+/* ===== 侧边栏样式 - 固定 ===== */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 240px;
+    height: 100vh;
+    overflow-y: auto;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 30px 0;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.sidebar h2 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 30px 0;
+    padding: 0 15px 15px;
+    border-bottom: 1px solid #334155;
+    color: #f1f5f9;
+}
+
+.sidebar nav {
+    flex: 1;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar li {
+    margin: 5px 0;
+}
+
+.sidebar .menu-item {
+    display: block;
+    padding: 12px 20px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+}
+
+.sidebar .menu-item:hover {
+    background: #2d3a4f;
+    color: #fff;
+    border-left-color: #2563eb;
+}
+
+.sidebar .menu-item.active {
+    background: #2d3a4f;
+    color: #fff;
+    border-left-color: #2563eb;
+    font-weight: 600;
+}
+
+/* 子菜单样式 */
+.sidebar .sub-menu {
+    padding-left: 20px;
+    display: none;
+}
+
+.sidebar .sub-menu.expanded {
+    display: block;
+}
+
+.sidebar .sub-menu .menu-item {
+    padding-left: 40px;
+    font-size: 14px;
+}
+
+.sidebar .menu-item.has-children::after {
+    content: "▼";
+    float: right;
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+
+.sidebar .menu-item.has-children.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+/* ===== 主内容区 - 留出侧边栏空间 ===== */
+.main-content {
+    margin-left: 240px;
+    padding: 30px 20px;
+    overflow-y: auto;
+    background: #f5f7fa;
+    min-height: 100vh;
+}
+
+/* 卡片容器 */
+.card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    padding: 24px 28px;
+    margin-bottom: 30px;
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+}
+
+h1.title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 0 30px 0;
+    letter-spacing: 1px;
+    color: #0f172a;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    padding-left: 12px;
+    border-left: 5px solid #2563eb;
+    color: #0f172a;
+}
+
+.form-row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.form-row label {
+    width: 140px;
+    font-weight: 500;
+    padding-top: 8px;
+    color: #334155;
+    font-size: 14px;
+}
+
+input, select, textarea {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+/* 取引先情報行 -  */
+.client-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.client-name-wrapper {
+    flex: 3;
+    display: flex;
+    gap: 12px;
+    position: relative;
+}
+
+#clientName,
+#clientNameDelivery {
+    flex: 2;
+    height: 60px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-size: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    resize: vertical;
+}
+
+.suffix-select {
+    width: 100px;
+    height: 60px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-size: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background-color: white;
+    cursor: pointer;
+}
+
+.client-address-wrapper {
+    flex: 2;
+}
+
+#clientAddress,
+#clientAddressDelivery {
+    width: 100%;
+    height: 60px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-size: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    resize: vertical;
+}
+
+/* 下拉列表通用样式 */
+.company-dropdown,
+.item-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+    display: none;
+}
+
+.company-dropdown.active,
+.item-dropdown.active {
+    display: block;
+}
+
+.company-dropdown-item,
+.item-dropdown-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s;
+}
+
+.company-dropdown-item:hover,
+.item-dropdown-item:hover {
+    background-color: #f8fafc;
+}
+
+.company-dropdown-item:last-child,
+.item-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.company-dropdown-item .company-name,
+.item-dropdown-item .item-name {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.company-dropdown-item .company-detail,
+.item-dropdown-item .item-detail {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.form-row input, .form-row select, .form-row textarea {
+    height: auto;
+    min-height: auto;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid #e2e8f0;
+    padding: 12px 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.delete-btn {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+    background-color: #dc2626;
+}
+
+/* 保存按钮样式 */
+.save-btn {
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-right: 5px;
+}
+
+.save-btn:hover {
+    background-color: #059669;
+}
+
+/* 商品明细的输入框样式 */
+#itemTable input[type="number"],
+#itemTable input[type="text"],
+#itemTable select,
+#deliveryItemTable input[type="number"],
+#deliveryItemTable input[type="text"],
+#deliveryItemTable select {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+/* 右侧合计区样式改为极简表格风格 */
+.summary-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;  /* 改这里：底部对齐 */
+    margin-top: 20px;
+    gap: 20px;
+}
+
+.tax-breakdown-container {
+    width: 45%;  
+    min-width: 280px;
+}
+
+.right-summary-container {
+    width:40%; 
+    min-width: 180px;
+}
+
+.tax-breakdown-title {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #1e293b;
+}
+
+.tax-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: #fff;
+    border: none;
+}
+
+.tax-breakdown-table th {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #cbd5e1;
+    padding: 8px 4px;
+    text-align: right;
+    font-weight: 500;
+    font-size: 12px; 
+    color: #06080a;
+}
+
+.tax-breakdown-table td {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px 4px;
+    text-align: right;
+    font-size: 12px;
+}
+
+.tax-breakdown-table th:first-child,
+.tax-breakdown-table td:first-child {
+    text-align: left;
+}
+
+/* 右侧汇总表格（极简风格） */
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: #fff;
+    border: none;
+}
+
+.summary-table th {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #cbd5e1;
+    padding: 8px 4px;
+    text-align: right;
+    font-weight: 600;
+    color: #334155;
+}
+
+.summary-table td {
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px 4px;
+    text-align: right;
+}
+
+.summary-table th:first-child,
+.summary-table td:first-child {
+    text-align: left;
+}
+
+/* 右侧合计行特殊加粗 */
+.summary-table tr:last-child td {
+    border-bottom: none;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+/* 旧.right 隐藏 */
+.right {
+    display: none;
+}
+
+/* ===== 請求書本体 ===== */
+.invoice {
+    width: 100%;
+    max-width: 100%;
+    margin: 40px auto;
+    background: #fff;
+    border: 2px solid #1e293b;
+    border-radius: 24px;
+    padding: 30px 35px;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.invoice h1.title {
+    font-size: 34px;
+    margin-top: 0;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    margin-bottom: 24px;
+}
+
+.box {
+    flex: 2;
+    min-width: 200px;
+}
+
+.client-name-line {
+    font-size: 18px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.client-suffix {
+    font-size: 15px;
+    color: #475569;
+    margin-left: 5px;
+}
+
+.company-info {
+    position: relative;
+    padding-right: 2.8cm;
+    margin-left: auto;
+    width: auto;
+    max-width: 55%;
+    background: #fff;
+    word-break: break-word;
+    text-align: left;
+}
+
+.company-details {
+    line-height: 1.3;
+    margin: 0;
+}
+
+.company-details .address-wrap {
+    line-height: inherit;
+    margin-bottom: 0;
+}
+
+.stamp {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 2.2cm;
+    height: 2.2cm;
+    object-fit: contain;
+    border-radius: 8px;  
+}
+
+.address-wrap {
+    display: block;
+    word-break: break-all;
+    line-height: 1.6;
+    margin-bottom: 4px;
+    white-space: pre-wrap;
+}
+
+.amount-box {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 20px 0 15px;
+    background: #f1f5f9;
+    padding: 12px 20px;
+    border-left: 6px solid #2563eb;
+    border-radius: 0 12px 12px 0;
+    color: #0f172a;
+}
+
+/* 预览区域：隐藏表格，显示卡片容器 */
+#invoiceTable {
+    display: none;
+}
+
+#invoiceItems {
+    display: block;
+    margin: 20px 0;
+}
+
+/* 卡片列表样式  屏幕与打印共享 */
+.invoice-items {
+    width: 100%;
+}
+
+.invoice-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+    align-items: center;
+    page-break-inside: avoid; 
+}
+
+.invoice-item.header {
+    font-weight: 700;
+    background: #f1f5f9;
+    padding: 10px 0;
+    border-bottom: 2px solid #94a3b8;
+    margin-bottom: 4px;
+}
+
+.invoice-item span {
+    padding: 0 8px;
+}
+
+/* 单价、数量、价格右对齐 */
+.invoice-item span:nth-child(2),
+.invoice-item span:nth-child(3),
+.invoice-item span:nth-child(4) {
+    text-align: right;
+}
+
+/* 表头对齐数据行 */
+.invoice-item.header span:first-child {
+    text-align: left;
+}
+.invoice-item.header span:nth-child(2),
+.invoice-item.header span:nth-child(3),
+.invoice-item.header span:nth-child(4) {
+    text-align: right;
+}
+
+/* 为银行信息和备注区域添加包装，以便控制显示 */
+#bankSection, #remarkSection {
+    display: block;
+}
+
+#i_bank, #i_remark, #d_remark {
+    display: block;
+    background: #f8fafc;
+    padding: 12px 16px;
+    border: 1px dashed #94a3b8;
+    margin: 10px 0 20px;
+    border-radius: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+hr {
+    margin: 24px 0;
+    border: none;
+    border-top: 2px solid #e2e8f0;
+}
+
+/* ==== 按钮样式 ===== */
+button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 40px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin: 8px 10px 0 0;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.2);
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    display: inline-block;
+}
+
+button:hover {
+    background: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+}
+
+button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+}
+
+button.secondary {
+    background: #f1f5f9;
+    color: #1e293b;
+    box-shadow: none;
+}
+button.secondary:hover {
+    background: #e2e8f0;
+}
+
+/* ===== 打印专用 ===== */
+@media print {
+    .sidebar {
+        display: none;
+    }
+    .main-content {
+        margin-left: 0;
+        padding: 0;
+        background: white;
+    }
+    .card {
+        background: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+    }
+    button {
+        display: none;
+    }
+    body * {
+        visibility: hidden;
+    }
+    .print-active, .print-active * {
+        visibility: visible;
+    }
+    .print-active {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none;
+        padding: 20px 20px 10px 20px;
+        margin: 0;
+        background: #fff;
+        font-size: 13px;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .stamp {
+        border: none;
+        box-shadow: none;
+        background: none;
+    }
+
+    .print-active h1.title {
+        font-weight: 500;
+        font-size: 26px;
+        margin-bottom: 16px;
+    }
+    .print-active .client-name-line {
+        font-size: 13pt; 
+        font-weight: normal;
+    }
+    .print-active .client-name-line strong,
+    .print-active .client-name-line .client-suffix {
+        font-size: 13pt;
+        font-weight: 500;
+        color: #000;
+    }
+    .print-active #i_myCompany,
+    .print-active #d_myCompany {
+        font-size: 13pt;
+        font-weight: 500;
+        color: #000;
+    }
+    .print-active .amount-box,
+    .print-active .amount-box span {
+        font-weight: 700;
+    }
+    .print-active .amount-box {
+        font-size: 18px;
+        margin: 8px 0 10px;
+        padding: 6px 16px;
+        background: none;
+        border-left: 4px solid #333;
+    }
+    .print-active hr {
+        margin: 10px 0;
+    }
+    .print-active .invoice-item {
+        padding: 3px 0;
+        font-size: 9.5pt;
+    }
+    .print-active .invoice-item.header {
+        padding: 5px 0;
+        font-weight: 700;
+        background: #ddd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .print-active .invoice-item {
+        page-break-inside: avoid;
+    }
+    .print-active #i_bank,
+    .print-active #i_remark,
+    .print-active #d_remark {
+        padding: 6px 10px;
+        margin: 6px 0 12px;
+        font-size: 10pt;
+        background: none;
+        border: 1px dashed #333;
+    }
+    .print-active {
+        font-size: 11pt;
+    }
+    .print-active .tax-breakdown-table,
+    .print-active .summary-table {
+        border: none;
+    }
+    .print-active .tax-breakdown-container,
+    .print-active .right-summary-container {
+        visibility: visible;
+    }
+    /* 隐藏旧的合计方框 (已删除，故无需额外处理) */
+}
+
+/* 我方会社名屏幕显示统一为18px，与对方公司名一致 */
+#i_myCompany, #d_myCompany {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+#subTotal, #taxTotal, #grandTotal, #displayTotal {
+    font-weight: 700;
+    color: #0f172a;
+}
+</style>
+</head>
+<body>
+
+<!-- 左侧引导栏 - 固定 -->
+<div class="sidebar">
+    <h2>帳票システム</h2>
+    <nav>
+        <ul>
+            <!-- 請求書父级菜单（带子菜单） -->
+            <li>
+                <span class="menu-item has-children" id="invoice-parent">📄 請求書</span>
+                <ul class="sub-menu expanded" id="invoice-submenu">
+                    <li><span class="menu-item active" data-doc="invoice">📄 請求書作成</span></li>
+                    <li><span class="menu-item" data-doc="invoice-settings">⚙️ 設定</span></li>
+                </ul>
+            </li>
+            <!-- 纳品书独立菜单 -->
+            <li><span class="menu-item" data-doc="delivery">📦 納品書</span></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- 主内容区 - 留出侧边栏空间 -->
+<div class="main-content">
+    <!-- 请求书内容区 (请求书作成) -->
+    <div id="invoice-section">
+        <!-- 取引先情報 卡片（請求書用） -->
+        <div class="card">
+            <h3>取引先情報</h3>
+            <div class="client-row">
+                <div class="client-name-wrapper">
+                    <input id="clientName" placeholder="会社名／個人名" autocomplete="off">
+                    <select id="clientSuffix" class="suffix-select">
+                        <option value="御中" selected>御中</option>
+                        <option value="様">様</option>
+                    </select>
+                    <div id="clientDropdown" class="company-dropdown"></div>
+                </div>
+                <div class="client-address-wrapper">
+                    <textarea id="clientAddress" placeholder="住所" rows="2"></textarea>
+                </div>
+            </div>
+            <button onclick="saveClientInfo()">取引先情報を保存</button>
+            <button onclick="manageClientList()">保存済取引先を管理</button>
+        </div>
+
+        <!-- 請求書情報 卡片 -->
+        <div class="card">
+            <h3>請求書情報</h3>
+            <div class="form-row">
+                <label>請求書番号</label>
+                <input id="invoiceNo" autocomplete="off">
+            </div>
+            <div class="form-row">
+                <label>請求日</label>
+                <input type="date" id="invoiceDate">
+            </div>
+            <div class="form-row">
+                <label>お支払い期限</label>
+                <input type="date" id="dueDate">
+            </div>
+            <div class="form-row">
+                <label>印影</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+            <div>
+                <canvas id="cropCanvas" style="border:1px solid #e2e8f0; border-radius:12px; max-width:300px;"></canvas>
+            </div>
+            <div class="amount-box">
+                ご請求金額：<span id="displayTotal">0円</span>
+            </div>
+        </div>
+
+        <!-- 我方会社情報 卡片（請求書用） -->
+        <div class="card">
+            <h3>我方会社情報</h3>
+            <div class="form-row" style="position: relative;">
+                <label>会社名</label>
+                <input id="myCompany" placeholder="" autocomplete="off">
+                <div id="myCompanyDropdown" class="company-dropdown"></div>
+            </div>
+            <div class="form-row">
+                <label>登録番号</label>
+                <input id="regNumber">
+            </div>
+            <div class="form-row">
+                <label>住所</label>
+                <textarea id="myAddress" placeholder="" rows="2"></textarea>
+            </div>
+            <div class="form-row">
+                <label>電話</label>
+                <input id="myPhone">
+            </div>
+            <div class="form-row">
+                <label>振込先</label>
+                <textarea id="bankInfo" placeholder="" rows="2"></textarea>
+            </div>
+            <div class="form-row" style="margin-top:20px;">
+                <label>備考</label>
+                <textarea id="remark" rows="3" style="flex:1;"></textarea>
+            </div>
+            <br>
+            <button onclick="saveCompanyInfo()">会社情報を保存</button>
+            <button onclick="manageCompanyList()">保存済み会社を管理</button>
+        </div>
+
+        <!-- 商品明細 卡片（請求書用） -->
+        <div class="card">
+            <h3>商品明細</h3>
+            <div style="margin-bottom: 10px;">
+                <button onclick="manageItemList()">商品マスタ</button>
+            </div>
+            <table id="itemTable">
+                <thead>
+                    <tr>
+                        <th>商品名</th>
+                        <th id="priceHeader">単価</th>
+                        <th>数量</th>
+                        <th id="unitHeader" style="display: none;">単位</th>
+                        <th>消費税</th>
+                        <th id="amountHeader">価格</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button onclick="addRow()">＋ 商品追加</button>
+            
+            <!-- 税率別内訳表 + 小計等を横並び（画面表示用） -->
+            <div class="summary-wrapper">
+                <div class="tax-breakdown-container">
+                    <div class="tax-breakdown-title">税率別内訳</div>
+                    <table class="tax-breakdown-table" id="taxBreakdownTable">
+                        <thead>
+                            <tr>
+                                <th>税率</th>
+                                <th>税抜金額</th>
+                                <th>消費税額</th>
+                                <th>税込金額</th>
+                            </tr>
+                        </thead>
+                        <tbody id="taxBreakdownBody">
+                            <!-- JSで動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="right-summary-container">
+    <table class="summary-table" id="rightSummaryTable">
+        <tbody>
+            <tr><td>小計</td><td id="subTotal">0円</td></tr>
+            <tr><td id="taxLabelRight">消費税</td><td id="taxTotal">0円</td></tr>
+            <tr><td>合計</td><td id="grandTotal">0円</td></tr>
+        </tbody>
+    </table>
+</div>
+            </div>
+        </div>
+
+        <!-- 按钮放在商品卡片下方、预览区上方 -->
+        <div style="margin-bottom: 20px;">
+            <button onclick="createInvoice()">内容を反映</button>
+            <button onclick="downloadInvoicePDF()">PDF保存</button>
+        </div>
+
+        <!-- 請求書プレビュー -->
+        <div id="invoice" class="invoice">
+            <h1 class="title">請求書</h1>
+            <div class="header">
+                <div class="box">
+                    <div class="client-name-line">
+                        <strong id="i_client"></strong>
+                        <span id="i_clientSuffix" class="client-suffix"></span>
+                    </div>
+                    <span id="i_clientAddress" class="address-wrap"></span><br>
+                </div>
+                <div class="company-info">
+                    <div class="company-details">
+                        <strong id="i_myCompany"></strong><br>
+                        登録番号：<span id="i_reg"></span>
+                    </div>
+                    <br>
+                    <div class="company-details">
+                        <span id="i_myAddress" class="address-wrap"></span>
+                        TEL：<span id="i_phone"></span>
+                    </div>
+                    <br>
+                    請求書番号：<span id="i_no"></span><br>
+                    請求日：<span id="i_date"></span><br>
+                    お支払い期限：<span id="i_due"></span>
+                    <img id="i_image" class="stamp" alt="印">
+                </div>
+            </div>
+            <hr>
+            <div class="amount-box">
+                ご請求金額：<span id="i_displayTotal"></span>
+            </div>
+            <table id="invoiceTable">
+                <thead>
+                    <tr>
+                        <th>商品名</th>
+                        <th id="previewPriceHeader">単価</th>
+                        <th>数量</th>
+                        <th id="previewAmountHeader">価格</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="invoiceItems" class="invoice-items"></div>
+            <hr>
+            <!-- 预览区税率別内訳表 + 右侧合计表格 -->
+            <div class="summary-wrapper preview-tax-breakdown-container">
+                <div class="tax-breakdown-container">
+                    <div class="tax-breakdown-title">税率別内訳</div>
+                    <table class="tax-breakdown-table" id="previewTaxBreakdownTable">
+                        <thead>
+                            <tr>
+                                <th>税率</th>
+                                <th>税抜金額</th>
+                                <th>消費税額</th>
+                                <th>税込金額</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTaxBreakdownBody">
+                            <!-- JSで動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="right-summary-container preview-right-summary">
+    <table class="summary-table">
+        <tbody>
+            <tr><td>小計</td><td id="i_sub_preview">0円</td></tr>
+            <tr><td id="previewTaxLabel">消費税</td><td id="i_tax_preview">0円</td></tr>
+            <tr><td>合計</td><td id="i_total_preview">0円</td></tr>
+        </tbody>
+    </table>
+</div>
+            </div>
+            <hr>
+            <!-- 振込先区域，由设置控制显示/隐藏 -->
+            <div id="bankSection">
+                <strong>振込先</strong><br>
+                <span id="i_bank" style="white-space: pre-wrap;"></span>
+            </div>
+            <!-- 備考区域，由设置控制显示/隐藏 -->
+            <div id="remarkSection">
+                <br>
+                <strong>備考</strong><br>
+                <span id="i_remark" class="address-wrap"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 納品書セクション（初期非表示） -->
+    <div id="delivery-section" style="display: none;">
+        <!-- 取引先情報 卡片（納品書用） -->
+        <div class="card">
+            <h3>取引先情報</h3>
+            <div class="client-row">
+                <div class="client-name-wrapper">
+                    <input id="clientNameDelivery" placeholder="会社名／個人名" autocomplete="off">
+                    <select id="clientSuffixDelivery" class="suffix-select">
+                        <option value="御中" selected>御中</option>
+                        <option value="様">様</option>
+                    </select>
+                    <div id="clientDropdownDelivery" class="company-dropdown"></div>
+                </div>
+                <div class="client-address-wrapper">
+                    <textarea id="clientAddressDelivery" placeholder="住所" rows="2"></textarea>
+                </div>
+            </div>
+            <button onclick="saveClientInfoDelivery()">取引先情報を保存</button>
+            <button onclick="manageClientList()">保存済取引先を管理</button>
+        </div>
+
+        <!-- 納品書情報 卡片 -->
+        <div class="card">
+            <h3>納品書情報</h3>
+            <div class="form-row">
+                <label>納品書番号</label>
+                <input id="deliveryNo" autocomplete="off">
+            </div>
+            <div class="form-row">
+                <label>納品日</label>
+                <input type="date" id="deliveryDate">
+            </div>
+            <div class="form-row">
+                <label>印影</label>
+                <input type="file" id="imageUploadDelivery" accept="image/*">
+            </div>
+            <div>
+                <canvas id="cropCanvasDelivery" style="border:1px solid #e2e8f0; border-radius:12px; max-width:300px;"></canvas>
+            </div>
+        </div>
+
+        <!-- 我方会社情報 卡片（納品書用） -->
+        <div class="card">
+            <h3>我方会社情報</h3>
+            <div class="form-row" style="position: relative;">
+                <label>会社名</label>
+                <input id="myCompanyDelivery" placeholder="" autocomplete="off">
+                <div id="myCompanyDropdownDelivery" class="company-dropdown"></div>
+            </div>
+            <div class="form-row">
+                <label>登録番号</label>
+                <input id="regNumberDelivery">
+            </div>
+            <div class="form-row">
+                <label>住所</label>
+                <textarea id="myAddressDelivery" placeholder="" rows="2"></textarea>
+            </div>
+            <div class="form-row">
+                <label>電話</label>
+                <input id="myPhoneDelivery">
+            </div>
+            <div class="form-row" style="margin-top:20px;">
+                <label>備考</label>
+                <textarea id="remarkDelivery" rows="3" style="flex:1;"></textarea>
+            </div>
+            <br>
+            <button onclick="saveCompanyInfoDelivery()">会社情報を保存</button>
+            <button onclick="manageCompanyList()">保存済み会社を管理</button>
+        </div>
+
+        <!-- 商品明細 卡片（納品書用） -->
+        <div class="card">
+            <h3>商品明細</h3>
+            <div style="margin-bottom: 10px;">
+                <button onclick="manageItemList()">商品マスタ</button>
+            </div>
+            <table id="deliveryItemTable">
+                <thead>
+                    <tr>
+                        <th>商品名</th>
+                        <th id="deliveryPriceHeader">単価</th>
+                        <th>数量</th>
+                        <th>消費税</th>
+                        <th id="deliveryAmountHeader">価格</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button onclick="addDeliveryRow()">＋ 商品追加</button>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <button onclick="createDelivery()">内容を反映</button>
+            <button onclick="downloadDeliveryPDF()">PDF保存</button>
+        </div>
+
+        <!-- 納品書プレビュー -->
+        <div id="deliveryPreview" class="invoice">
+            <h1 class="title">納品書</h1>
+            <div class="header">
+                <div class="box">
+                    <div class="client-name-line">
+                        <strong id="d_client"></strong>
+                        <span id="d_clientSuffix" class="client-suffix"></span>
+                    </div>
+                    <span id="d_clientAddress" class="address-wrap"></span><br>
+                </div>
+                <div class="company-info">
+                    <div class="company-details">
+                        <strong id="d_myCompany"></strong><br>
+                        登録番号：<span id="d_reg"></span>
+                    </div>
+                    <br>
+                    <div class="company-details">
+                        <span id="d_myAddress" class="address-wrap"></span>
+                        TEL：<span id="d_phone"></span>
+                    </div>
+                    <br>
+                    納品書番号：<span id="d_no"></span><br>
+                    納品日：<span id="d_date"></span><br>
+                    <img id="d_image" class="stamp" alt="印">
+                </div>
+            </div>
+            <hr>
+            <!-- 合計金額 -->
+            <div class="amount-box">
+                合計金額（税込）：<span id="d_totalAmount">0円</span>
+            </div>
+            <table id="deliveryPreviewTable">
+                <thead>
+                    <tr>
+                        <th>商品名</th>
+                        <th>単価</th>
+                        <th>数量</th>
+                        <th>消費税</th>
+                        <th>価格</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <hr>
+            <strong>備考</strong><br>
+            <span id="d_remark" class="address-wrap"></span>
+        </div>
+    </div>
+
+    <!-- 請求書設定セクション -->
+    <div id="invoice-settings-section" style="display: none;">
+        <div class="card">
+            <h3>請求書設定</h3>
+            <div class="form-row">
+                <label>デフォルト支払期限（日数）</label>
+                <input type="number" id="defaultDueDays" min="0" value="30" style="width: 100px;">
+            </div>
+            <div class="form-row">
+                <label>新規商品のデフォルト税率</label>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <label><input type="radio" name="defaultTax" value="0.08"> 8%</label>
+                    <label><input type="radio" name="defaultTax" value="0.10" checked> 10%</label>
+                    <label><input type="radio" name="defaultTax" value="exempt"> 対象外</label>
+                    <label><input type="radio" name="defaultTax" value="non-taxable"> 非課税</label>
+                </div>
+            </div>
+            <!-- 明細行ごとの端数処理（商品の小数部分） -->
+            <div class="form-row">
+                <label>明細行ごとの端数処理</label>
+                <div style="display: flex; gap: 15px;">
+                    <label><input type="radio" name="lineRoundingMethod" value="floor" checked> 切り捨て</label>
+                    <label><input type="radio" name="lineRoundingMethod" value="ceil"> 切り上げ</label>
+                    <label><input type="radio" name="lineRoundingMethod" value="round"> 四捨五入</label>
+                </div>
+            </div>
+            <!-- 消費税の端数処理 -->
+            <div class="form-row">
+                <label>消費税の端数処理</label>
+                <div style="display: flex; gap: 15px;">
+                    <label><input type="radio" name="taxRoundingMethod" value="floor" checked> 切り捨て</label>
+                    <label><input type="radio" name="taxRoundingMethod" value="ceil"> 切り上げ</label>
+                    <label><input type="radio" name="taxRoundingMethod" value="round"> 四捨五入</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <label>税区分</label>
+                <div style="display: flex; gap: 15px;">
+                    <label><input type="radio" name="taxType" value="exclusive" checked> 外税（税抜）</label>
+                    <label><input type="radio" name="taxType" value="inclusive"> 内税（税込）</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <label>単位の表示</label>
+                <label><input type="checkbox" id="showUnit"> 単位列を表示する（行ごとに単位を入力）</label>
+            </div>
+            <div class="form-row">
+                <label>印影の表示</label>
+                <label><input type="checkbox" id="showStamp" checked> 印影を表示</label>
+            </div>
+            <button onclick="saveInvoiceSettings()">設定を保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 共用変数・関数
+let currentDoc = 'invoice'; // 現在のドキュメントタイプ
+
+// 請求書設定（デフォルト値）—— 明細行と消費税で端数処理を分離
+let invoiceSettings = {
+    defaultDueDays: 30,
+    defaultTax: 0.10,
+    lineRoundingMethod: 'floor',   // 明細行ごとの端数処理
+    taxRoundingMethod: 'floor',    // 消費税の端数処理
+    showUnit: true,               // 是否显示单位列
+    showStamp: true,              // 印影表示
+    taxType: 'exclusive'          // 'exclusive' = 外税, 'inclusive' = 内税
+};
+
+// 侧边栏交互
+document.addEventListener('DOMContentLoaded', function() {
+    // 父级菜单点击展开/折叠
+    const parentMenuItem = document.getElementById('invoice-parent');
+    const subMenu = document.getElementById('invoice-submenu');
+    
+    parentMenuItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        subMenu.classList.toggle('expanded');
+        parentMenuItem.classList.toggle('collapsed');
+    });
+
+    // 所有菜单项点击切换内容
+    document.querySelectorAll('.menu-item[data-doc]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const doc = this.dataset.doc;
+            if (!doc) return;
+
+            // 更新当前文档类型
+            currentDoc = doc;
+
+            // 移除所有菜单项的 active 类
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+            // 为当前点击项添加 active
+            this.classList.add('active');
+            // 父级也保持高亮（如果是请求书相关）
+            if (doc === 'invoice' || doc === 'invoice-settings') {
+                document.getElementById('invoice-parent').classList.add('active');
+            } else {
+                document.getElementById('invoice-parent').classList.remove('active');
+            }
+
+            // 显示对应内容区域
+            document.getElementById('invoice-section').style.display = (doc === 'invoice') ? 'block' : 'none';
+            document.getElementById('delivery-section').style.display = (doc === 'delivery') ? 'block' : 'none';
+            document.getElementById('invoice-settings-section').style.display = (doc === 'invoice-settings') ? 'block' : 'none';
+
+            // 如果切换到请求书作成，刷新表格以应用最新设置
+            if (doc === 'invoice') {
+                refreshItemTable();
+                // 同时刷新预览区以更新底部文字
+                createInvoice();
+            }
+            if (doc === 'delivery') {
+                refreshDeliveryItemTable();
+            }
+        });
+    });
+
+    // 默认展开请求书子菜单并激活本体
+    subMenu.classList.add('expanded');
+    parentMenuItem.classList.add('active');
+    document.querySelector('.sub-menu .menu-item[data-doc="invoice"]').classList.add('active');
+});
+
+// 請求書用画像処理
+let originalImageInvoice = new Image();
+let cropCanvasInvoice = document.getElementById("cropCanvas");
+let ctxInvoice = cropCanvasInvoice.getContext("2d");
+
+document.getElementById("imageUpload").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event){
+        originalImageInvoice.onload = function(){
+            const maxSize = 300;
+            let width = originalImageInvoice.width;
+            let height = originalImageInvoice.height;
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            cropCanvasInvoice.width = width;
+            cropCanvasInvoice.height = height;
+            ctxInvoice.drawImage(originalImageInvoice, 0, 0, width, height);
+        }
+        originalImageInvoice.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+function cropImage(){
+    const size = 83;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = size;
+    tempCanvas.height = size;
+    const tctx = tempCanvas.getContext("2d");
+    tctx.drawImage(cropCanvasInvoice, 0, 0, size, size);
+    const croppedData = tempCanvas.toDataURL("image/png");
+    document.getElementById("i_image").src = croppedData;
+}
+
+// 納品書用画像処理
+let originalImageDelivery = new Image();
+let cropCanvasDelivery = document.getElementById("cropCanvasDelivery");
+let ctxDelivery = cropCanvasDelivery.getContext("2d");
+
+document.getElementById("imageUploadDelivery").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event){
+        originalImageDelivery.onload = function(){
+            const maxSize = 300;
+            let width = originalImageDelivery.width;
+            let height = originalImageDelivery.height;
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            cropCanvasDelivery.width = width;
+            cropCanvasDelivery.height = height;
+            ctxDelivery.drawImage(originalImageDelivery, 0, 0, width, height);
+        }
+        originalImageDelivery.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+function cropImageDelivery(){
+    const size = 83;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = size;
+    tempCanvas.height = size;
+    const tctx = tempCanvas.getContext("2d");
+    tctx.drawImage(cropCanvasDelivery, 0, 0, size, size);
+    const croppedData = tempCanvas.toDataURL("image/png");
+    document.getElementById("d_image").src = croppedData;
+}
+
+function yen(num){
+    return (num || 0).toLocaleString("ja-JP") + "円";
+}
+
+// 辅助函数：将税率选项转换为显示文本
+function getTaxDisplayText(taxValue) {
+    if (taxValue === 'exempt') return '対象外';
+    if (taxValue === 'non-taxable') return '非課税';
+    if (taxValue === 0.08 || taxValue === '0.08') return '8%';
+    if (taxValue === 0.10 || taxValue === '0.10') return '10%';
+    return '10%'; // fallback
+}
+
+// 辅助函数：将税率选项转换为数值（用于计算）
+function getTaxRate(taxValue) {
+    if (taxValue === 'exempt' || taxValue === 'non-taxable') return 0;
+    return parseFloat(taxValue);
+}
+
+// ========== 商品マスタ関連 ==========
+function getItemList() {
+    const saved = localStorage.getItem('itemList');
+    return saved ? JSON.parse(saved) : [];
+}
+
+function saveItem(item) {
+    let items = getItemList();
+    const existingIndex = items.findIndex(i => i.name === item.name);
+    if(existingIndex !== -1) {
+        if(!confirm('同じ商品名が既に保存されています。上書きしますか？')) return false;
+        items.splice(existingIndex, 1);
+    }
+    items.push(item);
+    localStorage.setItem('itemList', JSON.stringify(items));
+    alert('商品を保存しました。');
+    return true;
+}
+
+function deleteItem(id) {
+    let items = getItemList();
+    items = items.filter(i => i.id !== id);
+    localStorage.setItem('itemList', JSON.stringify(items));
+}
+
+function manageItemList() {
+    const items = getItemList();
+    if(items.length === 0) { alert('保存済みの商品はありません。'); return; }
+    let message = '保存済み商品一覧：\n\n';
+    items.forEach((item, index) => {
+        const taxText = getTaxDisplayText(item.tax);
+        message += `${index + 1}. ${item.name} (単価(税抜): ${item.price}円, 税率: ${taxText})\n`;
+    });
+    message += '\n削除する番号を入力してください（キャンセルで終了）';
+    const input = prompt(message);
+    if(input === null) return;
+    const index = parseInt(input) - 1;
+    if(index >= 0 && index < items.length) {
+        if(confirm(`「${items[index].name}」を削除しますか？`)) {
+            deleteItem(items[index].id);
+            alert('削除しました。');
+        }
+    } else alert('無効な番号です。');
+}
+
+function showItemDropdown(inputElement, row) {
+    const items = getItemList();
+    let dropdown = row.querySelector('.item-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'item-dropdown';
+        inputElement.parentNode.style.position = 'relative';
+        inputElement.parentNode.appendChild(dropdown);
+    }
+    if(items.length === 0) {
+        dropdown.innerHTML = '<div class="item-dropdown-item" style="color:#64748b;">保存済み商品はありません</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    items.sort((a, b) => b.id - a.id);
+    let html = '';
+    items.forEach(item => {
+        const taxText = getTaxDisplayText(item.tax);
+        html += `<div class="item-dropdown-item" data-id="${item.id}">
+                    <div class="item-name">${escapeHtml(item.name)}</div>
+                    <div class="item-detail">単価(税抜): ${item.price}円 | 税率: ${taxText}</div>
+                </div>`;
+    });
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+    dropdown.querySelectorAll('.item-dropdown-item').forEach(el => {
+        el.addEventListener('click', function(e) {
+            const id = parseInt(this.dataset.id);
+            const item = items.find(i => i.id === id);
+            if (item) {
+                const nameInput = row.querySelector('.name, .d-name');
+                const priceInput = row.querySelector('.price, .d-price');
+                const taxSelect = row.querySelector('.tax, .d-tax');
+                if (nameInput) nameInput.value = item.name;
+                // 根据当前税区分决定填充的单价
+                if (priceInput) {
+                    if (invoiceSettings.taxType === 'exclusive') {
+                        priceInput.value = item.price;
+                    } else {
+                        const taxRate = getTaxRate(item.tax);
+                        const inclusivePrice = item.price * (1 + taxRate);
+                        priceInput.value = inclusivePrice.toFixed(2);
+                    }
+                }
+                if (taxSelect) taxSelect.value = item.tax;
+                if (currentDoc === 'invoice') calculate();
+                else calculateDelivery();
+            }
+            dropdown.classList.remove('active');
+        });
+    });
+}
+
+function saveRow(btn) {
+    const row = btn.closest('tr');
+    if (!row) return;
+    
+    const nameInput = row.querySelector('.name, .d-name');
+    const priceInput = row.querySelector('.price, .d-price');
+    const taxSelect = row.querySelector('.tax, .d-tax');
+    
+    let name = nameInput ? nameInput.value.trim() : '';
+    let price = priceInput ? parseFloat(priceInput.value) : 0;
+    let tax = taxSelect ? taxSelect.value : 0.10;
+    
+    if (!name) {
+        alert('商品名を入力してください。');
+        return;
+    }
+    if (isNaN(price) || price <= 0) {
+        alert('有効な単価を入力してください。');
+        return;
+    }
+    
+    // 保存到主数据时统一存储不含税单价
+    let priceExclusive = price;
+    if (invoiceSettings.taxType === 'inclusive') {
+        const taxRate = getTaxRate(tax);
+        if (taxRate > 0) {
+            priceExclusive = price / (1 + taxRate);
+        } else {
+            priceExclusive = price;
+        }
+        // 使用明細行端数処理取整
+        const lineRound = invoiceSettings.lineRoundingMethod;
+        if (lineRound === 'floor') priceExclusive = Math.floor(priceExclusive);
+        else if (lineRound === 'ceil') priceExclusive = Math.ceil(priceExclusive);
+        else priceExclusive = Math.round(priceExclusive);
+    }
+    const item = {
+        id: Date.now(),
+        name: name,
+        price: priceExclusive,
+        tax: tax
+    };
+    
+    saveItem(item);
+}
+
+// ========== 請求書関連 ==========
+// 税率別集計を更新する関数（画面表示用とプレビュー用の両方を更新）
+function updateTaxBreakdown() {
+    const itemTable = document.getElementById('itemTable');
+    const lineRounding = invoiceSettings.lineRoundingMethod;
+    const taxRounding = invoiceSettings.taxRoundingMethod;
+    const taxType = invoiceSettings.taxType;
+    
+    // 税率ごとの集計オブジェクト
+    const taxMap = new Map(); // key: 税率表示用文字列, value: { rate: 数値, exclusiveTotal, taxTotal, inclusiveTotal }
+    
+    [...itemTable.rows].slice(1).forEach(r => {
+        let price = +r.querySelector(".price")?.value || 0;
+        let qty = +r.querySelector(".qty")?.value || 0;
+        let taxValue = r.querySelector(".tax")?.value;
+        let taxRate = getTaxRate(taxValue);
+        const taxKey = getTaxDisplayText(taxValue);
+        
+        let exclusiveForRow = 0, taxForRow = 0, inclusiveForRow = 0;
+        
+        if (taxType === 'exclusive') {
+            const rawSub = price * qty;
+            let roundedSub;
+            if (lineRounding === 'ceil') roundedSub = Math.ceil(rawSub);
+            else if (lineRounding === 'round') roundedSub = Math.round(rawSub);
+            else roundedSub = Math.floor(rawSub);
+            
+            exclusiveForRow = roundedSub;
+            if (taxRate > 0) {
+                const rawTax = roundedSub * taxRate;
+                if (taxRounding === 'ceil') taxForRow = Math.ceil(rawTax);
+                else if (taxRounding === 'round') taxForRow = Math.round(rawTax);
+                else taxForRow = Math.floor(rawTax);
+                inclusiveForRow = roundedSub + taxForRow;
+            } else {
+                taxForRow = 0;
+                inclusiveForRow = roundedSub;
+            }
+        } else {
+            const inclusiveRaw = price * qty;
+            if (lineRounding === 'ceil') inclusiveForRow = Math.ceil(inclusiveRaw);
+            else if (lineRounding === 'round') inclusiveForRow = Math.round(inclusiveRaw);
+            else inclusiveForRow = Math.floor(inclusiveRaw);
+            
+            if (taxRate > 0) {
+                let rawEx = inclusiveForRow / (1 + taxRate);
+                let ex;
+                if (taxRounding === 'ceil') ex = Math.ceil(rawEx);
+                else if (taxRounding === 'round') ex = Math.round(rawEx);
+                else ex = Math.floor(rawEx);
+                exclusiveForRow = ex;
+                taxForRow = inclusiveForRow - ex;
+            } else {
+                exclusiveForRow = inclusiveForRow;
+                taxForRow = 0;
+            }
+        }
+        
+        if (!taxMap.has(taxKey)) {
+            taxMap.set(taxKey, { rate: taxRate, exclusiveTotal: 0, taxTotal: 0, inclusiveTotal: 0 });
+        }
+        const entry = taxMap.get(taxKey);
+        entry.exclusiveTotal += exclusiveForRow;
+        entry.taxTotal += taxForRow;
+        entry.inclusiveTotal += inclusiveForRow;
+    });
+    
+    // ソート: 10%, 8%, 対象外, 非課税 の順
+    const order = ['10%', '8%', '対象外', '非課税'];
+    const sorted = Array.from(taxMap.entries()).sort((a, b) => {
+        return order.indexOf(a[0]) - order.indexOf(b[0]);
+    });
+    
+    // 更新画面表示用内訳表
+    const tbody = document.getElementById('taxBreakdownBody');
+    tbody.innerHTML = '';
+    for (let [key, data] of sorted) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${key}</td>
+            <td>${yen(data.exclusiveTotal)}</td>
+            <td>${yen(data.taxTotal)}</td>
+            <td>${yen(data.inclusiveTotal)}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+    
+    // 更新预览区内訳表
+    const previewTbody = document.getElementById('previewTaxBreakdownBody');
+    if (previewTbody) {
+        previewTbody.innerHTML = '';
+        for (let [key, data] of sorted) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${key}</td>
+                <td>${yen(data.exclusiveTotal)}</td>
+                <td>${yen(data.taxTotal)}</td>
+                <td>${yen(data.inclusiveTotal)}</td>
+            `;
+            previewTbody.appendChild(tr);
+        }
+    }
+}
+
+function calculate(){
+    const itemTable = document.getElementById('itemTable');
+    let sub = 0, tax = 0;
+    const lineRounding = invoiceSettings.lineRoundingMethod;
+    const taxRounding = invoiceSettings.taxRoundingMethod;
+    const taxType = invoiceSettings.taxType;
+    
+    [...itemTable.rows].slice(1).forEach(r => {
+        let price = +r.querySelector(".price")?.value || 0;
+        let qty = +r.querySelector(".qty")?.value || 0;
+        let taxValue = r.querySelector(".tax")?.value;
+        let taxRate = getTaxRate(taxValue);
+        let amount, taxAmount;
+        
+        if (taxType === 'exclusive') {
+            const rawSubtotal = price * qty;
+            let roundedSubtotal;
+            if (lineRounding === 'ceil') roundedSubtotal = Math.ceil(rawSubtotal);
+            else if (lineRounding === 'round') roundedSubtotal = Math.round(rawSubtotal);
+            else roundedSubtotal = Math.floor(rawSubtotal);
+            
+            if (taxRate === 0) {
+                taxAmount = 0;
+                amount = roundedSubtotal;
+            } else {
+                const rawTax = roundedSubtotal * taxRate;
+                if (taxRounding === 'ceil') taxAmount = Math.ceil(rawTax);
+                else if (taxRounding === 'round') taxAmount = Math.round(rawTax);
+                else taxAmount = Math.floor(rawTax);
+                amount = roundedSubtotal + taxAmount;
+            }
+            sub += roundedSubtotal;
+            tax += taxAmount;
+        } else {
+            const inclusiveRaw = price * qty;
+            if (lineRounding === 'ceil') amount = Math.ceil(inclusiveRaw);
+            else if (lineRounding === 'round') amount = Math.round(inclusiveRaw);
+            else amount = Math.floor(inclusiveRaw);
+            
+            if (taxRate === 0) {
+                taxAmount = 0;
+                sub += amount;
+            } else {
+                let rawSubEx = amount / (1 + taxRate);
+                let subtotalEx;
+                if (taxRounding === 'ceil') subtotalEx = Math.ceil(rawSubEx);
+                else if (taxRounding === 'round') subtotalEx = Math.round(rawSubEx);
+                else subtotalEx = Math.floor(rawSubEx);
+                taxAmount = amount - subtotalEx;
+                sub += amount;
+                tax += taxAmount;
+            }
+        }
+        r.querySelector(".amount").textContent = yen(amount);
+    });
+    document.getElementById('subTotal').textContent = yen(sub);
+    document.getElementById('taxTotal').textContent = yen(tax);
+    const total = (taxType === 'exclusive') ? sub + tax : sub;
+    document.getElementById('grandTotal').textContent = yen(total);
+    document.getElementById('displayTotal').textContent = yen(total);
+    
+    // 税率別内訳を更新
+    updateTaxBreakdown();
+    
+    // 更新右侧消费税标签文字
+    const taxLabelRight = document.getElementById('taxLabelRight');
+    if (taxLabelRight) {
+        taxLabelRight.innerText = taxType === 'exclusive' ? '消費税額' : 'うち消費税額';
+    }
+}
+
+function addRowWithData(data) {
+    const itemTable = document.getElementById('itemTable');
+    const r = itemTable.insertRow();
+    const defaultTax = invoiceSettings.defaultTax;
+    const showUnit = invoiceSettings.showUnit;
+    const taxType = invoiceSettings.taxType;
+    
+    let pricePlaceholder = (taxType === 'exclusive') ? '税抜単価' : '税込単価';
+    let initPrice = data.price || 0;
+    let taxValue = data.tax !== undefined ? data.tax : defaultTax;
+    
+    if (showUnit) {
+        r.innerHTML = `
+        <td style="position: relative;"><input class="name" type="text" placeholder="商品名" value="${escapeHtml(data.name || '')}" autocomplete="off"></td>
+        <td><input type="number" class="price" min="0" placeholder="${pricePlaceholder}" value="${initPrice}" step="any"></td>   
+        <td><input type="number" class="qty" min="1" placeholder="1" value="${data.qty || 1}"></td>
+        <td><input type="text" class="unit" placeholder="単位" value="${data.unit || '個'}"></td>
+        <td>
+            <select class="tax">
+                <option value="0.08" ${taxValue === 0.08 || taxValue === '0.08' ? 'selected' : ''}>8%</option>
+                <option value="0.10" ${taxValue === 0.10 || taxValue === '0.10' ? 'selected' : ''}>10%</option>
+                <option value="exempt" ${taxValue === 'exempt' ? 'selected' : ''}>対象外</option>
+                <option value="non-taxable" ${taxValue === 'non-taxable' ? 'selected' : ''}>非課税</option>
+            </select>
+        </td>
+        <td class="amount">0円</td>
+        <td>
+            <button class="save-btn" onclick="saveRow(this)">保存</button>
+            <button class="delete-btn" onclick="deleteRow(this)">削除</button>
+        </td>`;
+    } else {
+        r.innerHTML = `
+        <td style="position: relative;"><input class="name" type="text" placeholder="商品名" value="${escapeHtml(data.name || '')}" autocomplete="off"></td>
+        <td><input type="number" class="price" min="0" placeholder="${pricePlaceholder}" value="${initPrice}" step="any"></td>   
+        <td><input type="number" class="qty" min="1" placeholder="1" value="${data.qty || 1}"></td>
+        <td>
+            <select class="tax">
+                <option value="0.08" ${taxValue === 0.08 || taxValue === '0.08' ? 'selected' : ''}>8%</option>
+                <option value="0.10" ${taxValue === 0.10 || taxValue === '0.10' ? 'selected' : ''}>10%</option>
+                <option value="exempt" ${taxValue === 'exempt' ? 'selected' : ''}>対象外</option>
+                <option value="non-taxable" ${taxValue === 'non-taxable' ? 'selected' : ''}>非課税</option>
+            </select>
+        </td>
+        <td class="amount">0円</td>
+        <td>
+            <button class="save-btn" onclick="saveRow(this)">保存</button>
+            <button class="delete-btn" onclick="deleteRow(this)">削除</button>
+        </tr>`;
+    }
+    
+    const nameInput = r.querySelector('.name');
+    nameInput.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+    });
+    nameInput.addEventListener('focus', function() {
+        document.querySelectorAll('.item-dropdown.active').forEach(d => d.classList.remove('active'));
+        showItemDropdown(this, r);
+    });
+    
+    r.querySelectorAll("input,select").forEach(e => e.oninput = calculate);
+    calculate();
+}
+
+function addRow(){
+    addRowWithData({});
+}
+
+function deleteRow(btn){
+    const row = btn.closest('tr');
+    const itemTable = document.getElementById('itemTable');
+    if(row && itemTable.rows.length > 1) {
+        row.remove();
+        calculate();
+    } else {
+        alert('少なくとも1つの商品行が必要です。');
+    }
+}
+
+// 刷新表格，保留数据
+function refreshItemTable() {
+    const itemTable = document.getElementById('itemTable');
+    const rows = [...itemTable.rows].slice(1);
+    const data = rows.map(r => {
+        const name = r.querySelector('.name')?.value || '';
+        const price = parseFloat(r.querySelector('.price')?.value) || 0;
+        const qty = parseInt(r.querySelector('.qty')?.value) || 1;
+        const tax = r.querySelector('.tax')?.value;
+        const unit = r.querySelector('.unit')?.value || '';
+        return { name, price, qty, tax, unit };
+    });
+    
+    while (itemTable.rows.length > 1) {
+        itemTable.deleteRow(1);
+    }
+    
+    const unitHeader = document.getElementById('unitHeader');
+    if (unitHeader) {
+        unitHeader.style.display = invoiceSettings.showUnit ? 'table-cell' : 'none';
+    }
+    
+    const priceHeader = document.getElementById('priceHeader');
+    const amountHeader = document.getElementById('amountHeader');
+    if (priceHeader) {
+        priceHeader.innerText = invoiceSettings.taxType === 'exclusive' ? '単価（税抜）' : '単価（税込）';
+    }
+    if (amountHeader) {
+        amountHeader.innerText = invoiceSettings.taxType === 'exclusive' ? '価格（税抜）' : '価格（税込）';
+    }
+    
+    if (data.length === 0) {
+        addRowWithData({});
+    } else {
+        data.forEach(d => addRowWithData(d));
+    }
+}
+
+function createInvoice(){
+    calculate(); // 内部调用updateTaxBreakdown
+    
+    // 基本情報反映
+    document.getElementById('i_client').textContent = document.getElementById('clientName').value;
+    document.getElementById('i_clientSuffix').textContent = document.getElementById('clientSuffix').value;
+    document.getElementById('i_clientAddress').textContent = document.getElementById('clientAddress').value;
+    document.getElementById('i_myCompany').textContent = document.getElementById('myCompany').value;
+    document.getElementById('i_reg').textContent = document.getElementById('regNumber').value;
+    document.getElementById('i_myAddress').textContent = document.getElementById('myAddress').value;
+    document.getElementById('i_phone').textContent = document.getElementById('myPhone').value;
+    document.getElementById('i_no').textContent = document.getElementById('invoiceNo').value;
+    document.getElementById('i_date').textContent = document.getElementById('invoiceDate').value;
+    document.getElementById('i_due').textContent = document.getElementById('dueDate').value;
+    document.getElementById('i_displayTotal').textContent = document.getElementById('displayTotal').textContent;
+
+    if (cropCanvasInvoice.width > 0 && cropCanvasInvoice.height > 0) {
+        cropImage();
+    } else {
+        document.getElementById('i_image').src = '';
+    }
+
+    document.getElementById('i_image').style.display = invoiceSettings.showStamp ? 'block' : 'none';
+
+    const invoiceTable = document.getElementById('invoiceTable');
+    const priceHeaderText = invoiceSettings.taxType === 'exclusive' ? '単価（税抜）' : '単価（税込）';
+    const amountHeaderText = invoiceSettings.taxType === 'exclusive' ? '価格（税抜）' : '価格（税込）';
+    invoiceTable.innerHTML = `<thead><tr><th>商品名</th><th>${priceHeaderText}</th><th>数量</th><th>${amountHeaderText}</th></tr></thead><tbody></tbody>`;
+    
+    const previewPriceHeader = document.getElementById('previewPriceHeader');
+    const previewAmountHeader = document.getElementById('previewAmountHeader');
+    if (previewPriceHeader) previewPriceHeader.innerText = priceHeaderText;
+    if (previewAmountHeader) previewAmountHeader.innerText = amountHeaderText;
+    
+    const itemTable = document.getElementById('itemTable');
+    [...itemTable.rows].slice(1).forEach(r=>{
+        const qty = r.querySelector(".qty").value;
+        const unit = r.querySelector(".unit") ? r.querySelector(".unit").value : '';
+        const qtyDisplay = invoiceSettings.showUnit && unit ? qty + unit : qty;
+        invoiceTable.insertRow().innerHTML = `
+        <td>${escapeHtml(r.querySelector(".name").value)}</td>
+        <td>${yen(+r.querySelector(".price").value)}</td>
+        <td>${qtyDisplay}</td>
+        <td>${r.querySelector(".amount").textContent}</td>`;
+    });
+
+    const invoiceItems = document.getElementById('invoiceItems');
+    invoiceItems.innerHTML = '';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'invoice-item header';
+    headerDiv.innerHTML = `
+        <span>商品名</span>
+        <span>${priceHeaderText}</span>
+        <span>数量</span>
+        <span>${amountHeaderText}</span>
+    `;
+    invoiceItems.appendChild(headerDiv);
+
+    [...itemTable.rows].slice(1).forEach(r => {
+        const qty = r.querySelector(".qty").value;
+        const unit = r.querySelector(".unit") ? r.querySelector(".unit").value : '';
+        const qtyDisplay = invoiceSettings.showUnit && unit ? qty + unit : qty;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'invoice-item';
+        itemDiv.innerHTML = `
+            <span>${escapeHtml(r.querySelector(".name").value)}</span>
+            <span>${yen(+r.querySelector(".price").value)}</span>
+            <span>${qtyDisplay}</span>
+            <span>${r.querySelector(".amount").textContent}</span>
+        `;
+        invoiceItems.appendChild(itemDiv);
+    });
+
+    // 更新预览区右侧小计等
+    const subVal = document.getElementById('subTotal').textContent;
+    const taxVal = document.getElementById('taxTotal').textContent;
+    const totalVal = document.getElementById('grandTotal').textContent;
+    
+    document.getElementById('i_sub_preview').textContent = subVal;
+    document.getElementById('i_tax_preview').textContent = taxVal;
+    document.getElementById('i_total_preview').textContent = totalVal;
+    document.getElementById('previewTaxLabel').innerText = invoiceSettings.taxType === 'exclusive' ? '消費税額' : 'うち消費税額';
+
+    document.getElementById('i_bank').textContent = document.getElementById('bankInfo').value;
+    document.getElementById('i_remark').textContent = document.getElementById('remark').value;
+
+    document.getElementById('bankSection').style.display = 'block';
+    document.getElementById('remarkSection').style.display = 'block';
+    
+    document.getElementById('invoice').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ========== 納品書関連 ==========
+function calculateDelivery(){
+    const itemTable = document.getElementById('deliveryItemTable');
+    let total = 0;
+    const lineRounding = invoiceSettings.lineRoundingMethod;
+    const taxRounding = invoiceSettings.taxRoundingMethod;
+    const taxType = invoiceSettings.taxType;
+    
+    [...itemTable.rows].slice(1).forEach(r => {
+        let price = +r.querySelector(".d-price")?.value || 0;
+        let qty = +r.querySelector(".d-qty")?.value || 0;
+        let taxValue = r.querySelector(".d-tax")?.value;
+        let taxRate = getTaxRate(taxValue);
+        let amount;
+        
+        if (taxType === 'exclusive') {
+            const rawSub = price * qty;
+            let roundedSub;
+            if (lineRounding === 'ceil') roundedSub = Math.ceil(rawSub);
+            else if (lineRounding === 'round') roundedSub = Math.round(rawSub);
+            else roundedSub = Math.floor(rawSub);
+            
+            if (taxRate === 0) {
+                amount = roundedSub;
+            } else {
+                const rawTax = roundedSub * taxRate;
+                let taxAmount;
+                if (taxRounding === 'ceil') taxAmount = Math.ceil(rawTax);
+                else if (taxRounding === 'round') taxAmount = Math.round(rawTax);
+                else taxAmount = Math.floor(rawTax);
+                amount = roundedSub + taxAmount;
+            }
+        } else {
+            const inclusiveRaw = price * qty;
+            if (lineRounding === 'ceil') amount = Math.ceil(inclusiveRaw);
+            else if (lineRounding === 'round') amount = Math.round(inclusiveRaw);
+            else amount = Math.floor(inclusiveRaw);
+        }
+        total += amount;
+        if (r.querySelector(".d-amount")) r.querySelector(".d-amount").textContent = yen(amount);
+    });
+    document.getElementById('d_totalAmount').textContent = yen(total);
+}
+
+function addDeliveryRowWithData(data) {
+    const table = document.getElementById('deliveryItemTable');
+    const r = table.insertRow();
+    const defaultTax = invoiceSettings.defaultTax;
+    const taxType = invoiceSettings.taxType;
+    const pricePlaceholder = (taxType === 'exclusive') ? '税抜単価' : '税込単価';
+    let taxValue = data.tax !== undefined ? data.tax : defaultTax;
+    r.innerHTML = `
+        <td style="position: relative;"><input class="d-name" type="text" placeholder="商品名" value="${escapeHtml(data.name || '')}" autocomplete="off"></td>
+        <td><input type="number" class="d-price" min="0" placeholder="${pricePlaceholder}" value="${data.price || 0}" step="any"></td>
+        <td><input type="number" class="d-qty" min="1" placeholder="1" value="${data.qty || 1}"></td>
+        <td><select class="d-tax">
+                <option value="0.08" ${taxValue === 0.08 || taxValue === '0.08' ? 'selected' : ''}>8%</option>
+                <option value="0.10" ${taxValue === 0.10 || taxValue === '0.10' ? 'selected' : ''}>10%</option>
+                <option value="exempt" ${taxValue === 'exempt' ? 'selected' : ''}>対象外</option>
+                <option value="non-taxable" ${taxValue === 'non-taxable' ? 'selected' : ''}>非課税</option>
+            </select></td>
+        <td class="d-amount">0円</td>
+        <td><button class="save-btn" onclick="saveRow(this)">保存</button><button class="delete-btn" onclick="deleteDeliveryRow(this)">削除</button></td>
+    `;
+    const nameInput = r.querySelector('.d-name');
+    nameInput.addEventListener('mousedown', e => e.stopPropagation());
+    nameInput.addEventListener('focus', () => {
+        document.querySelectorAll('.item-dropdown.active').forEach(d => d.classList.remove('active'));
+        showItemDropdown(nameInput, r);
+    });
+    r.querySelectorAll("input,select").forEach(e => e.oninput = calculateDelivery);
+    calculateDelivery();
+}
+
+function addDeliveryRow(){ addDeliveryRowWithData({}); }
+
+function deleteDeliveryRow(btn){
+    const row = btn.closest('tr');
+    const table = document.getElementById('deliveryItemTable');
+    if(row && table.rows.length > 1) {
+        row.remove();
+        calculateDelivery();
+    } else {
+        alert('少なくとも1つの商品行が必要です。');
+    }
+}
+
+function refreshDeliveryItemTable() {
+    const table = document.getElementById('deliveryItemTable');
+    const rows = [...table.rows].slice(1);
+    const data = rows.map(r => ({
+        name: r.querySelector('.d-name')?.value || '',
+        price: parseFloat(r.querySelector('.d-price')?.value) || 0,
+        qty: parseInt(r.querySelector('.d-qty')?.value) || 1,
+        tax: r.querySelector('.d-tax')?.value
+    }));
+    while (table.rows.length > 1) table.deleteRow(1);
+    
+    const priceHeader = document.getElementById('deliveryPriceHeader');
+    const amountHeader = document.getElementById('deliveryAmountHeader');
+    if (priceHeader) {
+        priceHeader.innerText = invoiceSettings.taxType === 'exclusive' ? '単価（税抜）' : '単価（税込）';
+    }
+    if (amountHeader) {
+        amountHeader.innerText = invoiceSettings.taxType === 'exclusive' ? '価格（税抜）' : '価格（税込）';
+    }
+    
+    if (data.length === 0) addDeliveryRowWithData({});
+    else data.forEach(d => addDeliveryRowWithData(d));
+}
+
+function createDelivery() {
+    document.getElementById('d_client').textContent = document.getElementById('clientNameDelivery').value;
+    document.getElementById('d_clientSuffix').textContent = document.getElementById('clientSuffixDelivery').value;
+    document.getElementById('d_clientAddress').textContent = document.getElementById('clientAddressDelivery').value;
+    document.getElementById('d_myCompany').textContent = document.getElementById('myCompanyDelivery').value;
+    document.getElementById('d_reg').textContent = document.getElementById('regNumberDelivery').value;
+    document.getElementById('d_myAddress').textContent = document.getElementById('myAddressDelivery').value;
+    document.getElementById('d_phone').textContent = document.getElementById('myPhoneDelivery').value;
+    document.getElementById('d_no').textContent = document.getElementById('deliveryNo').value;
+    document.getElementById('d_date').textContent = document.getElementById('deliveryDate').value;
+    document.getElementById('d_remark').textContent = document.getElementById('remarkDelivery').value;
+
+    if (cropCanvasDelivery.width > 0 && cropCanvasDelivery.height > 0) {
+        cropImageDelivery();
+    } else {
+        document.getElementById('d_image').src = '';
+    }
+
+    const previewTable = document.getElementById('deliveryPreviewTable');
+    const priceHeaderText = invoiceSettings.taxType === 'exclusive' ? '単価（税抜）' : '単価（税込）';
+    const amountHeaderText = invoiceSettings.taxType === 'exclusive' ? '価格（税抜）' : '価格（税込）';
+    previewTable.innerHTML = `<thead><tr><th>商品名</th><th>${priceHeaderText}</th><th>数量</th><th>消費税</th><th>${amountHeaderText}</th></tr></thead><tbody></tbody>`;
+
+    const itemTable = document.getElementById('deliveryItemTable');
+    let total = 0;
+    const lineRounding = invoiceSettings.lineRoundingMethod;
+    const taxRounding = invoiceSettings.taxRoundingMethod;
+    const taxType = invoiceSettings.taxType;
+    
+    [...itemTable.rows].slice(1).forEach(r => {
+        const name = r.querySelector('.d-name').value;
+        const price = +r.querySelector('.d-price').value || 0;
+        const qty = +r.querySelector('.d-qty').value || 0;
+        const taxValue = r.querySelector('.d-tax').value;
+        const taxRate = getTaxRate(taxValue);
+        let amount, taxAmount;
+        
+        if (taxType === 'exclusive') {
+            const rawSub = price * qty;
+            let roundedSub;
+            if (lineRounding === 'ceil') roundedSub = Math.ceil(rawSub);
+            else if (lineRounding === 'round') roundedSub = Math.round(rawSub);
+            else roundedSub = Math.floor(rawSub);
+            if (taxRate === 0) {
+                amount = roundedSub;
+                taxAmount = 0;
+            } else {
+                const rawTax = roundedSub * taxRate;
+                if (taxRounding === 'ceil') taxAmount = Math.ceil(rawTax);
+                else if (taxRounding === 'round') taxAmount = Math.round(rawTax);
+                else taxAmount = Math.floor(rawTax);
+                amount = roundedSub + taxAmount;
+            }
+        } else {
+            const inclusiveRaw = price * qty;
+            if (lineRounding === 'ceil') amount = Math.ceil(inclusiveRaw);
+            else if (lineRounding === 'round') amount = Math.round(inclusiveRaw);
+            else amount = Math.floor(inclusiveRaw);
+            if (taxRate === 0) taxAmount = 0;
+            else {
+                let rawSubEx = amount / (1+taxRate);
+                let subtotalEx;
+                if (taxRounding === 'ceil') subtotalEx = Math.ceil(rawSubEx);
+                else if (taxRounding === 'round') subtotalEx = Math.round(rawSubEx);
+                else subtotalEx = Math.floor(rawSubEx);
+                taxAmount = amount - subtotalEx;
+            }
+        }
+        total += amount;
+        previewTable.insertRow().innerHTML = `
+            <td>${escapeHtml(name)}</td>
+            <td>${yen(price)}</td>
+            <td>${qty}</td>
+            <td>${getTaxDisplayText(taxValue)}</td>
+            <td>${yen(amount)}</td>
+        `;
+    });
+    document.getElementById('d_totalAmount').textContent = yen(total);
+    document.getElementById('deliveryPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function downloadDeliveryPDF() {
+    createDelivery();
+    document.querySelectorAll('.invoice').forEach(el => el.classList.remove('print-active'));
+    document.getElementById('deliveryPreview').classList.add('print-active');
+    window.print();
+}
+
+function downloadInvoicePDF() {
+    createInvoice();
+    document.querySelectorAll('.invoice').forEach(el => el.classList.remove('print-active'));
+    document.getElementById('invoice').classList.add('print-active');
+    window.print();
+}
+
+// ========== 請求書設定 ==========
+function loadInvoiceSettings() {
+    const saved = localStorage.getItem('invoiceSettings');
+    if (saved) {
+        invoiceSettings = JSON.parse(saved);
+    }
+    document.getElementById('defaultDueDays').value = invoiceSettings.defaultDueDays;
+    
+    const taxRadios = document.getElementsByName('defaultTax');
+    for (let radio of taxRadios) {
+        if (radio.value == invoiceSettings.defaultTax) {
+            radio.checked = true;
+        }
+    }
+    
+    const lineRadios = document.getElementsByName('lineRoundingMethod');
+    for (let radio of lineRadios) {
+        if (radio.value === invoiceSettings.lineRoundingMethod) {
+            radio.checked = true;
+        }
+    }
+    const taxRoundRadios = document.getElementsByName('taxRoundingMethod');
+    for (let radio of taxRoundRadios) {
+        if (radio.value === invoiceSettings.taxRoundingMethod) {
+            radio.checked = true;
+        }
+    }
+    
+    const taxTypeRadios = document.getElementsByName('taxType');
+    for (let radio of taxTypeRadios) {
+        if (radio.value === invoiceSettings.taxType) {
+            radio.checked = true;
+        }
+    }
+    document.getElementById('showUnit').checked = invoiceSettings.showUnit;
+    document.getElementById('showStamp').checked = invoiceSettings.showStamp;
+    
+    if (currentDoc === 'invoice') {
+        refreshItemTable();
+        createInvoice();
+    } else if (currentDoc === 'delivery') {
+        refreshDeliveryItemTable();
+    }
+}
+
+function saveInvoiceSettings() {
+    invoiceSettings.defaultDueDays = parseInt(document.getElementById('defaultDueDays').value) || 30;
+    const taxRadio = document.querySelector('input[name="defaultTax"]:checked');
+    invoiceSettings.defaultTax = taxRadio.value;
+    const lineRadio = document.querySelector('input[name="lineRoundingMethod"]:checked');
+    invoiceSettings.lineRoundingMethod = lineRadio.value;
+    const taxRoundRadio = document.querySelector('input[name="taxRoundingMethod"]:checked');
+    invoiceSettings.taxRoundingMethod = taxRoundRadio.value;
+    const taxTypeRadio = document.querySelector('input[name="taxType"]:checked');
+    invoiceSettings.taxType = taxTypeRadio.value;
+    invoiceSettings.showUnit = document.getElementById('showUnit').checked;
+    invoiceSettings.showStamp = document.getElementById('showStamp').checked;
+    localStorage.setItem('invoiceSettings', JSON.stringify(invoiceSettings));
+    
+    if (currentDoc === 'invoice') {
+        refreshItemTable();
+        createInvoice();
+    } else if (currentDoc === 'delivery') {
+        refreshDeliveryItemTable();
+    }
+    
+    alert('設定を保存しました。');
+}
+
+// ========== 取引先情報の保存・選択（請求書用）==========
+function saveClientInfo() {
+    const name = document.getElementById('clientName').value.trim();
+    if(!name) {
+        alert('会社名／個人名を入力してください。');
+        return;
+    }
+    
+    const clientData = {
+        id: Date.now(),
+        name: name,
+        suffix: document.getElementById('clientSuffix').value,
+        address: document.getElementById('clientAddress').value,
+        savedDate: new Date().toLocaleString('ja-JP')
+    };
+    
+    let clients = getClientList();
+    
+    const existingIndex = clients.findIndex(c => c.name === clientData.name);
+    if(existingIndex !== -1) {
+        if(!confirm('同じ名前が既に保存されています。上書きしますか？')) {
+            return;
+        }
+        clients.splice(existingIndex, 1);
+    }
+    
+    clients.push(clientData);
+    localStorage.setItem('clientList', JSON.stringify(clients));
+    alert('取引先情報を保存しました。\n会社名をクリックすると選択できます。');
+    document.getElementById('clientDropdown').classList.remove('active');
+}
+
+function getClientList() {
+    const saved = localStorage.getItem('clientList');
+    return saved ? JSON.parse(saved) : [];
+}
+
+function showClientDropdown() {
+    const clients = getClientList();
+    const dropdown = document.getElementById('clientDropdown');
+    
+    if(clients.length === 0) {
+        dropdown.innerHTML = '<div class="company-dropdown-item" style="color:#64748b;">保存済み取引先はありません</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    clients.sort((a, b) => b.id - a.id); 
+    
+    let html = '';
+    clients.forEach(c => {
+        html += `
+            <div class="company-dropdown-item" onclick="selectClient(${c.id})">
+                <div class="company-name">${escapeHtml(c.name)}</div>
+                <div class="company-detail">
+                    ${escapeHtml(c.suffix)} | 
+                    ${escapeHtml(c.address ? c.address.substring(0, 20) + (c.address.length > 20 ? '…' : '') : '住所なし')}
+                </div>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+}
+
+function selectClient(id) {
+    const clients = getClientList();
+    const client = clients.find(c => c.id === id);
+    
+    if(client) {
+        document.getElementById('clientName').value = client.name || '';
+        document.getElementById('clientSuffix').value = client.suffix || '御中';
+        document.getElementById('clientAddress').value = client.address || '';
+    }
+    
+    document.getElementById('clientDropdown').classList.remove('active');
+}
+
+// ========== 取引先情報の保存・選択（納品書用）==========
+function saveClientInfoDelivery() {
+    const name = document.getElementById('clientNameDelivery').value.trim();
+    if(!name) {
+        alert('会社名／個人名を入力してください。');
+        return;
+    }
+    
+    const clientData = {
+        id: Date.now(),
+        name: name,
+        suffix: document.getElementById('clientSuffixDelivery').value,
+        address: document.getElementById('clientAddressDelivery').value,
+        savedDate: new Date().toLocaleString('ja-JP')
+    };
+    
+    let clients = getClientList();
+    
+    const existingIndex = clients.findIndex(c => c.name === clientData.name);
+    if(existingIndex !== -1) {
+        if(!confirm('同じ名前が既に保存されています。上書きしますか？')) {
+            return;
+        }
+        clients.splice(existingIndex, 1);
+    }
+    
+    clients.push(clientData);
+    localStorage.setItem('clientList', JSON.stringify(clients));
+    alert('取引先情報を保存しました。\n会社名をクリックすると選択できます。');
+    document.getElementById('clientDropdownDelivery').classList.remove('active');
+}
+
+function showClientDropdownDelivery() {
+    const clients = getClientList();
+    const dropdown = document.getElementById('clientDropdownDelivery');
+    
+    if(clients.length === 0) {
+        dropdown.innerHTML = '<div class="company-dropdown-item" style="color:#64748b;">保存済み取引先はありません</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    clients.sort((a, b) => b.id - a.id); 
+    
+    let html = '';
+    clients.forEach(c => {
+        html += `
+            <div class="company-dropdown-item" onclick="selectClientDelivery(${c.id})">
+                <div class="company-name">${escapeHtml(c.name)}</div>
+                <div class="company-detail">
+                    ${escapeHtml(c.suffix)} | 
+                    ${escapeHtml(c.address ? c.address.substring(0, 20) + (c.address.length > 20 ? '…' : '') : '住所なし')}
+                </div>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+}
+
+function selectClientDelivery(id) {
+    const clients = getClientList();
+    const client = clients.find(c => c.id === id);
+    
+    if(client) {
+        document.getElementById('clientNameDelivery').value = client.name || '';
+        document.getElementById('clientSuffixDelivery').value = client.suffix || '御中';
+        document.getElementById('clientAddressDelivery').value = client.address || '';
+    }
+    
+    document.getElementById('clientDropdownDelivery').classList.remove('active');
+}
+
+// ========== 我方会社情報の保存・選択（請求書用）==========
+function saveCompanyInfo(){
+    const myCompany = document.getElementById('myCompany');
+    if(!myCompany.value.trim()) {
+        alert('会社名を入力してください。');
+        return;
+    }
+    
+    const companyData = {
+        id: Date.now(),
+        myCompany: myCompany.value,
+        regNumber: document.getElementById('regNumber').value,
+        myAddress: document.getElementById('myAddress').value,
+        myPhone: document.getElementById('myPhone').value,
+        bankInfo: document.getElementById('bankInfo').value,
+        remark: document.getElementById('remark').value,
+        savedDate: new Date().toLocaleString('ja-JP')
+    };
+    
+    let companies = getCompanyList();
+    
+    const existingIndex = companies.findIndex(c => c.myCompany === companyData.myCompany);
+    if(existingIndex !== -1) {
+        if(!confirm('同じ会社名が既に保存されています。上書きしますか？')) {
+            return;
+        }
+        companies.splice(existingIndex, 1);
+    }
+    
+    companies.push(companyData);
+    localStorage.setItem("companyList", JSON.stringify(companies));
+    
+    alert('我方会社情報を保存しました。\n会社名をクリックすると選択できます。');
+    document.getElementById('myCompanyDropdown').classList.remove('active');
+}
+
+function getCompanyList() {
+    const saved = localStorage.getItem("companyList");
+    return saved ? JSON.parse(saved) : [];
+}
+
+function showCompanyDropdown() {
+    const companies = getCompanyList();
+    const dropdown = document.getElementById('myCompanyDropdown');
+    
+    if(companies.length === 0) {
+        dropdown.innerHTML = '<div class="company-dropdown-item" style="color:#64748b;">保存済み会社はありません</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    companies.sort((a, b) => b.id - a.id);
+    
+    let html = '';
+    companies.forEach(company => {
+        html += `
+            <div class="company-dropdown-item" onclick="selectCompany(${company.id})">
+                <div class="company-name">${escapeHtml(company.myCompany)}</div>
+                <div class="company-detail">
+                    ${escapeHtml(company.regNumber || '登録番号なし')} | 
+                    ${escapeHtml(company.myPhone || '電話なし')}
+                </div>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+}
+
+function selectCompany(id) {
+    const companies = getCompanyList();
+    const company = companies.find(c => c.id === id);
+    
+    if(company) {
+        document.getElementById('myCompany').value = company.myCompany || '';
+        document.getElementById('regNumber').value = company.regNumber || '';
+        document.getElementById('myAddress').value = company.myAddress || '';
+        document.getElementById('myPhone').value = company.myPhone || '';
+        document.getElementById('bankInfo').value = company.bankInfo || '';
+        document.getElementById('remark').value = company.remark || '';
+    }
+    
+    document.getElementById('myCompanyDropdown').classList.remove('active');
+}
+
+// ========== 我方会社情報の保存・選択（納品書用）==========
+function saveCompanyInfoDelivery(){
+    const myCompany = document.getElementById('myCompanyDelivery');
+    if(!myCompany.value.trim()) {
+        alert('会社名を入力してください。');
+        return;
+    }
+    
+    const companyData = {
+        id: Date.now(),
+        myCompany: myCompany.value,
+        regNumber: document.getElementById('regNumberDelivery').value,
+        myAddress: document.getElementById('myAddressDelivery').value,
+        myPhone: document.getElementById('myPhoneDelivery').value,
+        remark: document.getElementById('remarkDelivery').value,
+        savedDate: new Date().toLocaleString('ja-JP')
+    };
+    
+    let companies = getCompanyList();
+    
+    const existingIndex = companies.findIndex(c => c.myCompany === companyData.myCompany);
+    if(existingIndex !== -1) {
+        if(!confirm('同じ会社名が既に保存されています。上書きしますか？')) {
+            return;
+        }
+        companies.splice(existingIndex, 1);
+    }
+    
+    companies.push(companyData);
+    localStorage.setItem("companyList", JSON.stringify(companies));
+    
+    alert('我方会社情報を保存しました。\n会社名をクリックすると選択できます。');
+    document.getElementById('myCompanyDropdownDelivery').classList.remove('active');
+}
+
+function showCompanyDropdownDelivery() {
+    const companies = getCompanyList();
+    const dropdown = document.getElementById('myCompanyDropdownDelivery');
+    
+    if(companies.length === 0) {
+        dropdown.innerHTML = '<div class="company-dropdown-item" style="color:#64748b;">保存済み会社はありません</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    companies.sort((a, b) => b.id - a.id);
+    
+    let html = '';
+    companies.forEach(company => {
+        html += `
+            <div class="company-dropdown-item" onclick="selectCompanyDelivery(${company.id})">
+                <div class="company-name">${escapeHtml(company.myCompany)}</div>
+                <div class="company-detail">
+                    ${escapeHtml(company.regNumber || '登録番号なし')} | 
+                    ${escapeHtml(company.myPhone || '電話なし')}
+                </div>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+}
+
+function selectCompanyDelivery(id) {
+    const companies = getCompanyList();
+    const company = companies.find(c => c.id === id);
+    
+    if(company) {
+        document.getElementById('myCompanyDelivery').value = company.myCompany || '';
+        document.getElementById('regNumberDelivery').value = company.regNumber || '';
+        document.getElementById('myAddressDelivery').value = company.myAddress || '';
+        document.getElementById('myPhoneDelivery').value = company.myPhone || '';
+        document.getElementById('remarkDelivery').value = company.remark || '';
+    }
+    
+    document.getElementById('myCompanyDropdownDelivery').classList.remove('active');
+}
+
+// ========== 共通の管理関数 ==========
+function manageClientList() {
+    const clients = getClientList();
+    
+    if(clients.length === 0) {
+        alert('保存済みの取引先はありません。');
+        return;
+    }
+    
+    let message = '保存済み取引先一覧：\n\n';
+    clients.forEach((c, index) => {
+        message += `${index + 1}. ${c.name} (${c.suffix})\n`;
+    });
+    message += '\n削除する番号を入力してください（キャンセルで終了）';
+    
+    const input = prompt(message);
+    if(input === null) return;
+    
+    const index = parseInt(input) - 1;
+    if(index >= 0 && index < clients.length) {
+        if(confirm(`「${clients[index].name}」を削除しますか？`)) {
+            clients.splice(index, 1);
+            localStorage.setItem('clientList', JSON.stringify(clients));
+            alert('削除しました。');
+        }
+    } else {
+        alert('無効な番号です。');
+    }
+}
+
+function manageCompanyList() {
+    const companies = getCompanyList();
+    
+    if(companies.length === 0) {
+        alert('保存済みの会社はありません。');
+        return;
+    }
+    
+    let message = '保存済み会社一覧：\n\n';
+    companies.forEach((c, index) => {
+        message += `${index + 1}. ${c.myCompany} (${c.regNumber || '登録番号なし'})\n`;
+    });
+    message += '\n削除する番号を入力してください（キャンセルで終了）';
+    
+    const input = prompt(message);
+    if(input === null) return;
+    
+    const index = parseInt(input) - 1;
+    if(index >= 0 && index < companies.length) {
+        if(confirm(`「${companies[index].myCompany}」を削除しますか？`)) {
+            companies.splice(index, 1);
+            localStorage.setItem("companyList", JSON.stringify(companies));
+            alert('削除しました。');
+        }
+    } else {
+        alert('無効な番号です。');
+    }
+}
+
+function escapeHtml(text) {
+    if(!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ドロップダウンをクリック以外で閉じる
+document.addEventListener('click', function(e) {
+    const clientDropdown = document.getElementById('clientDropdown');
+    const clientInput = document.getElementById('clientName');
+    if(clientInput && !clientInput.contains(e.target) && !clientDropdown.contains(e.target)) {
+        clientDropdown.classList.remove('active');
+    }
+    const myDropdown = document.getElementById('myCompanyDropdown');
+    const myInput = document.getElementById('myCompany');
+    if(myInput && !myInput.contains(e.target) && !myDropdown.contains(e.target)) {
+        myDropdown.classList.remove('active');
+    }
+
+    const clientDropdownDelivery = document.getElementById('clientDropdownDelivery');
+    const clientInputDelivery = document.getElementById('clientNameDelivery');
+    if(clientInputDelivery && !clientInputDelivery.contains(e.target) && !clientDropdownDelivery.contains(e.target)) {
+        clientDropdownDelivery.classList.remove('active');
+    }
+    const myDropdownDelivery = document.getElementById('myCompanyDropdownDelivery');
+    const myInputDelivery = document.getElementById('myCompanyDelivery');
+    if(myInputDelivery && !myInputDelivery.contains(e.target) && !myDropdownDelivery.contains(e.target)) {
+        myDropdownDelivery.classList.remove('active');
+    }
+
+    document.querySelectorAll('.item-dropdown.active').forEach(dropdown => {
+        if (!dropdown.contains(e.target) && !e.target.classList.contains('name') && !e.target.classList.contains('d-name')) {
+            dropdown.classList.remove('active');
+        }
+    });
+});
+
+document.getElementById('clientName').addEventListener('focus', function() {
+    showClientDropdown();
+});
+document.getElementById('myCompany').addEventListener('focus', function() {
+    showCompanyDropdown();
+});
+document.getElementById('clientNameDelivery').addEventListener('focus', function() {
+    showClientDropdownDelivery();
+});
+document.getElementById('myCompanyDelivery').addEventListener('focus', function() {
+    showCompanyDropdownDelivery();
+});
+
+document.getElementById('clientName').addEventListener('keydown', function(e) {
+    if(e.key === 'Escape') {
+        document.getElementById('clientDropdown').classList.remove('active');
+    }
+});
+document.getElementById('myCompany').addEventListener('keydown', function(e) {
+    if(e.key === 'Escape') {
+        document.getElementById('myCompanyDropdown').classList.remove('active');
+    }
+});
+document.getElementById('clientNameDelivery').addEventListener('keydown', function(e) {
+    if(e.key === 'Escape') {
+        document.getElementById('clientDropdownDelivery').classList.remove('active');
+    }
+});
+document.getElementById('myCompanyDelivery').addEventListener('keydown', function(e) {
+    if(e.key === 'Escape') {
+        document.getElementById('myCompanyDropdownDelivery').classList.remove('active');
+    }
+});
+
+window.onload = function(){
+    loadInvoiceSettings();
+
+    const itemTable = document.getElementById('itemTable');
+    if(itemTable.rows.length === 1) {
+        addRow();
+    }
+    const deliveryTable = document.getElementById('deliveryItemTable');
+    if(deliveryTable.rows.length === 1) {
+        addDeliveryRow();
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const invoiceDate = document.getElementById('invoiceDate');
+    if(!invoiceDate.value) invoiceDate.value = today;
+    const deliveryDate = document.getElementById('deliveryDate');
+    if(!deliveryDate.value) deliveryDate.value = today;
+    
+    const dueDateInput = document.getElementById('dueDate');
+    if(!dueDateInput.value && invoiceSettings.defaultDueDays > 0) {
+        const dueDateObj = new Date();
+        dueDateObj.setDate(dueDateObj.getDate() + invoiceSettings.defaultDueDays);
+        dueDateInput.value = dueDateObj.toISOString().split('T')[0];
+    }
+    
+    if (currentDoc === 'invoice') {
+        createInvoice();
+    }
+};
+</script>
+
+</body>
+</html>

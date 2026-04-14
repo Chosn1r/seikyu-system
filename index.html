@@ -833,7 +833,7 @@ button.secondary:hover {
                 </ul>
             </li>
             <!-- 纳品书独立菜单 -->
-            <li><span class="menu-item" data-doc="delivery">📦 納品書</span></li>
+            <li><span class="menu-item" data-doc="delivery">📦 納品書(未完成)</span></li>
         </ul>
     </nav>
 </div>
@@ -1768,7 +1768,7 @@ function calculate(){
     // 更新右侧消费税标签文字
     const taxLabelRight = document.getElementById('taxLabelRight');
     if (taxLabelRight) {
-        taxLabelRight.innerText = taxType === 'exclusive' ? '消費税額' : 'うち消費税額';
+        taxLabelRight.innerText = taxType === 'exclusive' ? '消費税額合計' : 'うち消費税額合計';
     }
 }
 
@@ -1970,7 +1970,7 @@ function createInvoice(){
     document.getElementById('i_sub_preview').textContent = subVal;
     document.getElementById('i_tax_preview').textContent = taxVal;
     document.getElementById('i_total_preview').textContent = totalVal;
-    document.getElementById('previewTaxLabel').innerText = invoiceSettings.taxType === 'exclusive' ? '消費税額' : 'うち消費税額';
+    document.getElementById('previewTaxLabel').innerText = invoiceSettings.taxType === 'exclusive' ? '消費税額合計' : 'うち消費税額合計';
 
     document.getElementById('i_bank').textContent = document.getElementById('bankInfo').value;
     document.getElementById('i_remark').textContent = document.getElementById('remark').value;

@@ -1358,8 +1358,8 @@ button.secondary:hover {
             <input id="bulkExcelFile" type="file" accept=".xlsx,.xls,.csv,.tsv,text/csv" onchange="importExcelItems(this)">
             <span style="font-size:12px; color:#64748b;">※ 1枚目シートを読み込みます</span>
         </div>
-        <p>貼り付け：Tab / 半角「,」 / 全角「，」 / スペース区切り（1行1件：商品コード・商品名・単価・数量・税区分）</p>
-        <textarea id="bulkItemInput" placeholder="例（どれでも可）:\n131，耳机，2999，5，8%\nA001,サンプル,1200,1,10%\nB2	商品	980	2	0.08"></textarea>
+        <p>（1行1件：商品コード・商品名・単価・数量・税区分）</p>
+        <textarea id="bulkItemInput" placeholder="例（上記の順序でご記入願います）:12345（商品コード），イヤホン（商品名），12999（単価），5（数量），8%（税区分）"></textarea>
         <div class="bulk-modal-actions">
             <button class="secondary" onclick="closeBulkItemModal()">キャンセル</button>
             <button onclick="bulkAddItems()">貼り付けデータを登録</button>

@@ -380,7 +380,6 @@ th {
     border: 1px solid #e2e8f0;
 }
 
-/* 右侧合计区样式改为极简表格风格 */
 .summary-wrapper {
     display: flex;
     justify-content: space-between;
@@ -438,7 +437,6 @@ th {
     text-align: left;
 }
 
-/* 右侧汇总表格（极简风格） */
 .summary-table {
     width: 100%;
     border-collapse: collapse;
@@ -469,7 +467,6 @@ th {
     text-align: left;
 }
 
-/* 右侧合计行特殊加粗 */
 .summary-table tr:last-child td {
     border-bottom: none;
     font-weight: 700;
@@ -621,7 +618,6 @@ th {
     grid-template-columns: 1fr 2fr 1fr 1fr 1fr;
 }
 
-/* 单価、数量、価格右对齐（适配4列和5列） */
 .invoice-item.default-cols span:nth-child(2),
 .invoice-item.default-cols span:nth-child(3),
 .invoice-item.default-cols span:nth-child(4) {
@@ -647,7 +643,7 @@ th {
     text-align: right;
 }
 
-/* 为银行信息和备注区域添加包装，以便控制显示 */
+/* 银行信息和备注区加包装，控制显示 */
 #bankSection, #remarkSection {
     display: block;
 }
@@ -874,7 +870,6 @@ button.secondary:hover {
     }
 }
 
-/* 我方会社名屏幕显示统一为18px，与对方公司名一致 */
 #i_myCompany, #d_myCompany {
     font-size: 18px;
     font-weight: 600;
@@ -1405,7 +1400,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新当前文档类型
             currentDoc = doc;
 
-            // 移除所有菜单项的 active 类
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
             // 为当前点击项添加 active
             this.classList.add('active');
@@ -1421,10 +1415,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('delivery-section').style.display = (doc === 'delivery') ? 'block' : 'none';
             document.getElementById('invoice-settings-section').style.display = (doc === 'invoice-settings') ? 'block' : 'none';
 
-            // 如果切换到请求书作成，刷新表格以应用最新设置
+            // 如果切换到请求书作成，刷新表格
             if (doc === 'invoice') {
                 refreshItemTable();
-                // 同时刷新预览区以更新底部文字
                 createInvoice();
             }
             if (doc === 'delivery') {
@@ -1433,7 +1426,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 默认展开请求书子菜单并激活本体
     subMenu.classList.add('expanded');
     parentMenuItem.classList.add('active');
     document.querySelector('.sub-menu .menu-item[data-doc="invoice"]').classList.add('active');
@@ -1535,7 +1527,6 @@ function yen(num){
     return (num || 0).toLocaleString("ja-JP") + "円";
 }
 
-// 辅助函数：将税率选项转换为显示文本
 function getTaxDisplayText(taxValue) {
     if (taxValue === 'exempt') return '対象外';
     if (taxValue === 'non-taxable') return '非課税';
